@@ -21,6 +21,7 @@ export class TutorialOverlay extends Container {
     panelBg.roundRect(20, 0, VIRTUAL_WIDTH - 40, 130, 14)
       .fill({ color: 0x1f2a44, alpha: 0.97 })
       .stroke({ color: 0xd9b382, width: 1.5 })
+    panelBg.eventMode = 'none'
 
     this.msgText = new Text({
       text: '',
