@@ -55,7 +55,8 @@ export class ClientSlot extends Container {
 
     // §5.3.7.1.1 초상 글로우 — deliverable 시 베이지골드 펄스
     this.portraitGlow = new Graphics()
-    this.portraitGlow.circle(32, 50, 42).fill({ color: 0xd9b382, alpha: 0 })
+    this.portraitGlow.circle(32, 50, 42).fill({ color: 0xd9b382, alpha: 1 })
+    this.portraitGlow.alpha = 0
     this.portraitArea.addChild(this.portraitGlow)
 
     const circle = new Graphics()
@@ -168,7 +169,8 @@ export class ClientSlot extends Container {
     // §5.3.7.1.1 버튼 글로우 — btnBg 뒤에 배치
     this.btnGlow = new Graphics()
     this.btnGlow.roundRect(-8, -8, BTN_W + 16, 76, 16)
-      .fill({ color: 0xd9b382, alpha: 0 })
+      .fill({ color: 0xd9b382, alpha: 1 })
+    this.btnGlow.alpha = 0
     btn.addChild(this.btnGlow)
 
     this.btnBg = new Graphics()

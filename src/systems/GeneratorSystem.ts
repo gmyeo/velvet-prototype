@@ -36,41 +36,19 @@ export class GeneratorSystem {
     defs.forEach(def => {
       const gen = this.board.addGenerator(def, def.col, def.row)
       this.generators.push(gen)
+      // Per-generator listener: cell underneath is eventMode='none', so no competition.
+      gen.on('pointerdown', (e: FederatedPointerEvent) => {
+        e.stopPropagation()
+        this.onGeneratorTap(gen)
+      })
       this.startAutoSpawn(gen)
       this.startRecharge(gen)
     })
-    // One board-level listener routes taps to the correct generator by position.
-    // This bypasses Pixi.js z-order hit-testing which can miss generator objects
-    // when overlapping cells or UI elements steal pointer events.
-    this.setupBoardListener()
   }
 
   /** Instantly add charge to all generators — used by instant-refill button */
   refillAll(amount = 10): void {
     this.generators.forEach(gen => gen.addCharge(amount))
-  }
-
-  private setupBoardListener(): void {
-    this.board.eventMode = 'static'
-    this.board.on('pointerdown', (e: FederatedPointerEvent) => {
-      const local = e.getLocalPosition(this.board)
-      const gen = this.findGeneratorAt(local.x, local.y)
-      if (gen) this.onGeneratorTap(gen)
-    })
-  }
-
-  /** Returns the generator whose cell contains (boardX, boardY), or null. */
-  private findGeneratorAt(boardX: number, boardY: number): Generator | null {
-    const half = CELL_SIZE / 2
-    for (const gen of this.generators) {
-      if (
-        Math.abs(boardX - gen.position.x) <= half &&
-        Math.abs(boardY - gen.position.y) <= half
-      ) {
-        return gen
-      }
-    }
-    return null
   }
 
   private onGeneratorTap(gen: Generator): void {
@@ -79,14 +57,16 @@ export class GeneratorSystem {
       return
     }
 
-    // §5.3.5 energy check
-    if (this.energySystem && !this.energySystem.consume()) return
-
-    // Generator charge check
-    if (!gen.consumeCharge()) {
+    // Charge check first — don't waste energy when charge is empty
+    if (gen.charge <= 0) {
       bus.emit('ui:toast', { message: `렌: "${gen.def.id.replace('gen_', '')} 생성기 충전이 필요합니다."` })
       return
     }
+
+    // §5.3.5 energy check
+    if (this.energySystem && !this.energySystem.consume()) return
+
+    gen.consumeCharge()
 
     if (this.firstTap) {
       this.firstTap = false

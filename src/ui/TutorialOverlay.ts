@@ -1,5 +1,5 @@
 // §8 Tutorial overlay — message panel + [건너뛰기] button
-import { Container, Graphics, Text, TextStyle } from 'pixi.js'
+import { Container, FederatedPointerEvent, Graphics, Text, TextStyle } from 'pixi.js'
 import { VIRTUAL_WIDTH } from '../utils/grid'
 import { tweenAlpha } from '../utils/tween'
 import type { TutorialStepDef } from '../systems/TutorialSystem'
@@ -43,7 +43,8 @@ export class TutorialOverlay extends Container {
     skipBg.eventMode = 'static'
     skipBg.cursor = 'pointer'
     skipBg.position.set(VIRTUAL_WIDTH - 126, 88)
-    skipBg.on('pointertap', () => {
+    skipBg.on('pointerdown', (e: FederatedPointerEvent) => {
+      e.stopPropagation()
       this.onSkip?.()
     })
 
