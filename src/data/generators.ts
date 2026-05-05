@@ -3,7 +3,8 @@ export interface GeneratorDef {
   chainId: string
   initialCharge: number
   rechargeIntervalSec: number
-  autoSpawnIntervalSec: number
+  /** Auto-spawn interval in seconds. Omit (or leave undefined) to disable auto-spawn. */
+  autoSpawnIntervalSec?: number
   unlockFameTier: 1 | 2 | 3 | 4
   color: number
   col: number
@@ -16,7 +17,6 @@ export const GENERATORS: GeneratorDef[] = [
     chainId: 'chain_clue',
     initialCharge: 30,
     rechargeIntervalSec: 60,
-    autoSpawnIntervalSec: 5.0,
     unlockFameTier: 1,
     color: 0x5b8fc4,
     col: 2,
@@ -27,7 +27,6 @@ export const GENERATORS: GeneratorDef[] = [
     chainId: 'chain_tool',
     initialCharge: 30,
     rechargeIntervalSec: 60,
-    autoSpawnIntervalSec: 5.0,
     unlockFameTier: 1,
     color: 0xc47a3a,
     col: 4,
@@ -38,7 +37,6 @@ export const GENERATORS: GeneratorDef[] = [
     chainId: 'chain_lifestyle',
     initialCharge: 25,
     rechargeIntervalSec: 75,
-    autoSpawnIntervalSec: 5.0,
     unlockFameTier: 2,
     color: 0xc4728a,
     col: 5,
@@ -49,7 +47,6 @@ export const GENERATORS: GeneratorDef[] = [
     chainId: 'chain_trace',
     initialCharge: 20,
     rechargeIntervalSec: 90,
-    autoSpawnIntervalSec: 5.0,
     unlockFameTier: 4,
     color: 0x4a8c6a,
     col: 1,

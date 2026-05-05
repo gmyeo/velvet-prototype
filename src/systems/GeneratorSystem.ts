@@ -89,9 +89,9 @@ export class GeneratorSystem {
   }
 
   private startAutoSpawn(gen: Generator): void {
+    if (!gen.def.autoSpawnIntervalSec) return
     const intervalMs = gen.def.autoSpawnIntervalSec * 1000
     const timerId = window.setInterval(() => {
-      // Auto-spawn doesn't consume charge or energy — free background action
       this.spawnFromGenerator(gen)
     }, intervalMs)
     this.autoTimers.set(gen, timerId)
