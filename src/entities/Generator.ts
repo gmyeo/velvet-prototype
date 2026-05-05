@@ -1,4 +1,4 @@
-import { Container, Graphics, Text, TextStyle } from 'pixi.js'
+import { Container, Graphics, Rectangle, Text, TextStyle } from 'pixi.js'
 import { CELL_SIZE } from '../utils/grid'
 import type { GeneratorDef } from '../data/generators'
 
@@ -7,8 +7,8 @@ export class Generator extends Container {
   readonly col: number
   readonly row: number
 
-  private lastDoubleTapTime = 0
-  private readonly DOUBLE_TAP_MS = 300
+  private lastTapTime = 0
+  private readonly DOUBLE_TAP_MS = 400
 
   charge: number
   private chargeLbl: Text
@@ -22,6 +22,9 @@ export class Generator extends Container {
     this.chargeLbl = this.buildSelf()
     this.eventMode = 'static'
     this.cursor = 'pointer'
+    // Explicit hit area prevents edge-pixel misses and Cell sibling conflicts
+    const hs = CELL_SIZE / 2
+    this.hitArea = new Rectangle(-hs, -hs, CELL_SIZE, CELL_SIZE)
   }
 
   private buildSelf(): Text {
@@ -113,11 +116,17 @@ export class Generator extends Container {
     this.updateChargeDisplay()
   }
 
-  /** Returns true if this tap counts as a double-tap */
+  /** Returns true if this pointertap counts as a double-tap */
   checkDoubleTap(): boolean {
     const now = performance.now()
-    const delta = now - this.lastDoubleTapTime
-    this.lastDoubleTapTime = now
+    const delta = now - this.lastTapTime
+    this.lastTapTime = now
     return delta < this.DOUBLE_TAP_MS && delta > 0
+  }
+
+  /** Visual pulse on first tap — hints the user to tap again */
+  flashFirstTap(): void {
+    this.scale.set(0.92)
+    setTimeout(() => this.scale.set(1), 120)
   }
 }

@@ -47,8 +47,11 @@ export class GeneratorSystem {
   }
 
   private bindGenerator(gen: Generator): void {
-    gen.on('pointerdown', () => {
-      if (!gen.checkDoubleTap()) return
+    gen.on('pointertap', () => {
+      if (!gen.checkDoubleTap()) {
+        gen.flashFirstTap()
+        return
+      }
 
       // §5.3.5 energy check
       if (this.energySystem && !this.energySystem.consume()) return

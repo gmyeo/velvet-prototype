@@ -64,6 +64,8 @@ export class Board extends Container {
     const gen = new Generator(def, col, row)
     const cell = this.getCell(col, row)!
     cell.state = 'generator'
+    // Disable the underlying Cell so it can't compete with the Generator for pointer events
+    cell.eventMode = 'none'
     gen.position.set(col * CELL_SIZE + CELL_SIZE / 2, row * CELL_SIZE + CELL_SIZE / 2)
     this.generators.push(gen)
     this.addChild(gen)
