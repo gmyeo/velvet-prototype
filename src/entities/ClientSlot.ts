@@ -2,14 +2,13 @@ import { Container, Graphics, Text, TextStyle } from 'pixi.js'
 import type { RequirementState } from '../systems/QuestSystem'
 import type { OrderDef } from '../data/quests'
 import { VIRTUAL_WIDTH } from '../utils/grid'
-import { scalePulse } from '../utils/tween'
+import { scalePulse, tweenAlpha } from '../utils/tween'
 import { getChain } from '../data/chains'
 
 export const SLOT_HEIGHT = 160
 const PORTRAIT_W = 80
 const BTN_W = 110
 
-// Compact mode when > 3 requirements
 const CARD_H_NORMAL = 44
 const CARD_H_COMPACT = 28
 const CARD_GAP_NORMAL = 6
@@ -20,8 +19,15 @@ export class ClientSlot extends Container {
   private deliverBtn: Container
   private btnBg!: Graphics
   private btnLabel!: Text
+  /** §5.3.7.1.1 버튼 글로우 */
+  private btnGlow!: Graphics
+  /** §5.3.7.1.1 초상 글로우 */
+  private portraitGlow!: Graphics
+  private portraitArea!: Container
+
   private _deliverable = false
   private pulseTimer: ReturnType<typeof setInterval> | null = null
+  private glowStopped = false
   private compact: boolean
   private reqAreaW: number
   onDeliver: (() => void) | null = null
@@ -44,12 +50,17 @@ export class ClientSlot extends Container {
   }
 
   private buildPortrait(order: OrderDef): void {
-    const area = new Container()
-    area.position.set(8, 8)
+    this.portraitArea = new Container()
+    this.portraitArea.position.set(8, 8)
+
+    // §5.3.7.1.1 초상 글로우 — deliverable 시 베이지골드 펄스
+    this.portraitGlow = new Graphics()
+    this.portraitGlow.circle(32, 50, 42).fill({ color: 0xd9b382, alpha: 0 })
+    this.portraitArea.addChild(this.portraitGlow)
 
     const circle = new Graphics()
     circle.circle(32, 50, 32).fill(0x8b3a5c).stroke({ color: 0xd9b382, width: 2 })
-    area.addChild(circle)
+    this.portraitArea.addChild(circle)
 
     const initial = new Text({
       text: order.clientName[0],
@@ -57,7 +68,7 @@ export class ClientSlot extends Container {
     })
     initial.anchor.set(0.5)
     initial.position.set(32, 50)
-    area.addChild(initial)
+    this.portraitArea.addChild(initial)
 
     const name = new Text({
       text: order.clientName,
@@ -65,9 +76,9 @@ export class ClientSlot extends Container {
     })
     name.anchor.set(0.5, 0)
     name.position.set(32, 90)
-    area.addChild(name)
+    this.portraitArea.addChild(name)
 
-    this.addChild(area)
+    this.addChild(this.portraitArea)
   }
 
   private buildRequirementCards(order: OrderDef): void {
@@ -110,12 +121,12 @@ export class ClientSlot extends Container {
     const itemName = chain.itemNames[req.itemLevel - 1]
 
     if (compact) {
-      const label = new Text({
+      const lbl = new Text({
         text: `L${req.itemLevel} ${itemName}`,
         style: new TextStyle({ fontSize: 11, fill: 0xd9b382, fontWeight: 'bold' }),
       })
-      label.position.set(dotR * 2 + 10, (cardH - 12) / 2)
-      card.addChild(label)
+      lbl.position.set(dotR * 2 + 10, (cardH - 12) / 2)
+      card.addChild(lbl)
     } else {
       const nameText = new Text({
         text: `L${req.itemLevel} ${itemName}`,
@@ -154,6 +165,12 @@ export class ClientSlot extends Container {
     btn.eventMode = 'static'
     btn.cursor = 'pointer'
 
+    // §5.3.7.1.1 버튼 글로우 — btnBg 뒤에 배치
+    this.btnGlow = new Graphics()
+    this.btnGlow.roundRect(-8, -8, BTN_W + 16, 76, 16)
+      .fill({ color: 0xd9b382, alpha: 0 })
+    btn.addChild(this.btnGlow)
+
     this.btnBg = new Graphics()
     this.btnBg.roundRect(0, 0, BTN_W, 60, 10).fill(0x555555)
     btn.addChild(this.btnBg)
@@ -174,7 +191,7 @@ export class ClientSlot extends Container {
     return btn
   }
 
-  /** Called after every board rescan */
+  /** 보드 리스캔 후 매 호출 */
   update(states: RequirementState[], deliverable: boolean): void {
     const cardH = this.compact ? CARD_H_COMPACT : CARD_H_NORMAL
 
@@ -214,26 +231,51 @@ export class ClientSlot extends Container {
       this.btnLabel.style.fill = 0xffffff
       this.startButtonPulse()
     } else {
+      this.stopButtonPulse()
       this.btnBg.clear()
       this.btnBg.roundRect(0, 0, BTN_W, 60, 10).fill(0x555555)
       this.btnLabel.style.fill = 0x888888
-      this.stopButtonPulse()
     }
   }
 
+  /** §5.3.7.1.1 스케일 펄스 + 베이지골드 글로우 */
   private startButtonPulse(): void {
     if (this.pulseTimer) return
+    this.glowStopped = false
+
+    // 글로우 ping-pong 시작
+    this.runGlowPulse()
+
+    // 0.6초 주기 스케일 펄스
     this.pulseTimer = setInterval(() => {
-      scalePulse(this.deliverBtn, 1.05, 300)
+      scalePulse(this.deliverBtn, 1.06, 280)
     }, 600)
   }
 
+  private runGlowPulse(): void {
+    if (this.glowStopped) return
+    tweenAlpha(this.btnGlow, 0, 0.55, 300, () => {
+      if (this.glowStopped) { this.btnGlow.alpha = 0; return }
+      tweenAlpha(this.btnGlow, 0.55, 0, 300, () => {
+        if (this.glowStopped) { this.btnGlow.alpha = 0; return }
+        // 초상 글로우도 동기화
+        tweenAlpha(this.portraitGlow, 0, 0.45, 300, () => {
+          if (this.glowStopped) { this.portraitGlow.alpha = 0; return }
+          tweenAlpha(this.portraitGlow, 0.45, 0, 300, () => this.runGlowPulse())
+        })
+      })
+    })
+  }
+
   private stopButtonPulse(): void {
+    this.glowStopped = true
     if (this.pulseTimer) {
       clearInterval(this.pulseTimer)
       this.pulseTimer = null
     }
     this.deliverBtn.scale.set(1)
+    this.btnGlow.alpha = 0
+    this.portraitGlow.alpha = 0
   }
 
   destroy(): void {

@@ -240,7 +240,8 @@ export class BoardScene extends Container {
       const l2 = this.board.allCells().filter(c =>
         c.item?.chainId === 'chain_clue' && c.item?.level === 2
       ).length
-      this.tutorialSystem.checkBoardState(l1, l2)
+      // T6는 isDeliverable 상태(모든 Requirements 충족)일 때만 트리거
+      this.tutorialSystem.checkBoardState(l1, l2, this.questSystem.isDeliverable())
     }
   }
 

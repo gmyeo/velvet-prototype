@@ -14,7 +14,8 @@ export class TutorialOverlay extends Container {
   constructor() {
     super()
     this.alpha = 0
-    this.eventMode = 'none'
+    // 'passive' — 컨테이너 자신은 이벤트 미수신, 자식은 정상 수신
+    this.eventMode = 'passive'
 
     const panelBg = new Graphics()
     panelBg.roundRect(20, 0, VIRTUAL_WIDTH - 40, 130, 14)
@@ -27,37 +28,41 @@ export class TutorialOverlay extends Container {
         fontSize: 15,
         fill: 0xf4ecdd,
         wordWrap: true,
-        wordWrapWidth: VIRTUAL_WIDTH - 80,
+        wordWrapWidth: VIRTUAL_WIDTH - 130,
         lineHeight: 24,
-        align: 'center',
+        align: 'left',
       }),
     })
-    this.msgText.anchor.set(0.5, 0)
-    this.msgText.position.set(VIRTUAL_WIDTH / 2, 14)
+    this.msgText.position.set(36, 14)
 
-    // Skip button
+    // [건너뛰기] 버튼 — eventMode: 'static' 필수
     const skipBg = new Graphics()
-    skipBg.roundRect(VIRTUAL_WIDTH - 120, 90, 90, 30, 6).fill(0x8b3a5c)
+    skipBg.roundRect(0, 0, 90, 32, 8)
+      .fill(0x8b3a5c)
+      .stroke({ color: 0xd9b382, width: 1 })
     skipBg.eventMode = 'static'
     skipBg.cursor = 'pointer'
-    skipBg.on('pointertap', () => this.onSkip?.())
+    skipBg.position.set(VIRTUAL_WIDTH - 126, 88)
+    skipBg.on('pointertap', () => {
+      this.onSkip?.()
+    })
 
     const skipLabel = new Text({
       text: '건너뛰기',
-      style: new TextStyle({ fontSize: 12, fill: 0xffffff }),
+      style: new TextStyle({ fontSize: 13, fill: 0xffffff, fontWeight: 'bold' }),
     })
     skipLabel.anchor.set(0.5)
-    skipLabel.position.set(VIRTUAL_WIDTH - 75, 105)
+    skipLabel.position.set(45, 16)
+    skipBg.addChild(skipLabel)
 
     this.panel = new Container()
     this.panel.position.set(0, PANEL_Y)
-    this.panel.addChild(panelBg, this.msgText, skipBg, skipLabel)
+    this.panel.addChild(panelBg, this.msgText, skipBg)
     this.addChild(this.panel)
   }
 
   showStep(step: TutorialStepDef): void {
     this.msgText.text = `렌: "${step.message}"`
-    this.eventMode = 'none'
     tweenAlpha(this, this.alpha, 1, 200)
   }
 
