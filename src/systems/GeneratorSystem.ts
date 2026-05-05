@@ -1,3 +1,4 @@
+import { FederatedPointerEvent } from 'pixi.js'
 import { Generator } from '../entities/Generator'
 import { Board } from '../entities/Board'
 import { Item } from '../entities/Item'
@@ -35,10 +36,13 @@ export class GeneratorSystem {
     defs.forEach(def => {
       const gen = this.board.addGenerator(def, def.col, def.row)
       this.generators.push(gen)
-      this.bindGenerator(gen)
       this.startAutoSpawn(gen)
       this.startRecharge(gen)
     })
+    // One board-level listener routes taps to the correct generator by position.
+    // This bypasses Pixi.js z-order hit-testing which can miss generator objects
+    // when overlapping cells or UI elements steal pointer events.
+    this.setupBoardListener()
   }
 
   /** Instantly add charge to all generators — used by instant-refill button */
@@ -46,28 +50,49 @@ export class GeneratorSystem {
     this.generators.forEach(gen => gen.addCharge(amount))
   }
 
-  private bindGenerator(gen: Generator): void {
-    gen.on('pointerdown', () => {
-      if (!gen.checkDoubleTap()) {
-        gen.flashFirstTap()
-        return
-      }
-
-      // §5.3.5 energy check
-      if (this.energySystem && !this.energySystem.consume()) return
-
-      // Generator charge check
-      if (!gen.consumeCharge()) {
-        bus.emit('ui:toast', { message: `렌: "${gen.def.id.replace('gen_', '')} 생성기 충전이 필요합니다."` })
-        return
-      }
-
-      if (this.firstTap) {
-        this.firstTap = false
-        bus.emit('tutorial:firstSpawn', null)
-      }
-      this.spawnFromGenerator(gen)
+  private setupBoardListener(): void {
+    this.board.eventMode = 'static'
+    this.board.on('pointerdown', (e: FederatedPointerEvent) => {
+      const local = e.getLocalPosition(this.board)
+      const gen = this.findGeneratorAt(local.x, local.y)
+      if (gen) this.onGeneratorTap(gen)
     })
+  }
+
+  /** Returns the generator whose cell contains (boardX, boardY), or null. */
+  private findGeneratorAt(boardX: number, boardY: number): Generator | null {
+    const half = CELL_SIZE / 2
+    for (const gen of this.generators) {
+      if (
+        Math.abs(boardX - gen.position.x) <= half &&
+        Math.abs(boardY - gen.position.y) <= half
+      ) {
+        return gen
+      }
+    }
+    return null
+  }
+
+  private onGeneratorTap(gen: Generator): void {
+    if (!gen.checkDoubleTap()) {
+      gen.flashFirstTap()
+      return
+    }
+
+    // §5.3.5 energy check
+    if (this.energySystem && !this.energySystem.consume()) return
+
+    // Generator charge check
+    if (!gen.consumeCharge()) {
+      bus.emit('ui:toast', { message: `렌: "${gen.def.id.replace('gen_', '')} 생성기 충전이 필요합니다."` })
+      return
+    }
+
+    if (this.firstTap) {
+      this.firstTap = false
+      bus.emit('tutorial:firstSpawn', null)
+    }
+    this.spawnFromGenerator(gen)
   }
 
   private spawnFromGenerator(gen: Generator): void {
@@ -82,7 +107,6 @@ export class GeneratorSystem {
     scalePulse(item, 1.15, 200)
     Sound.spawn()
 
-    // Particle burst at spawn position
     const px = spawnCell.col * CELL_SIZE + CELL_SIZE / 2
     const py = BOARD_OFFSET_Y + spawnCell.row * CELL_SIZE + CELL_SIZE / 2
     burst(px, py, gen.def.color, 5, 2)
@@ -101,7 +125,6 @@ export class GeneratorSystem {
   }
 
   private startRecharge(gen: Generator): void {
-    // 1 charge restored per rechargeIntervalSec
     const intervalMs = gen.def.rechargeIntervalSec * 1000
     const timerId = window.setInterval(() => {
       if (gen.charge < gen.def.initialCharge) {
